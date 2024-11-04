@@ -22,14 +22,28 @@ def central_difference(f: Any, *vals: Any, arg: int = 0, epsilon: float = 1e-6) 
     Returns:
         An approximation of $f'_i(x_0, \ldots, x_{n-1})$
     """
-    # TODO: Implement for Task 1.1.
-    raise NotImplementedError("Need to implement for Task 1.1")
+    # Приближаем по i-му элементу, соответственно, нам надо сначала
+    # изменить i-й элемент
+    # Приведем к листу (в тайп хинте указан любой обьект, видимо, итерируемый):
+    vals = [i for i in vals]
+    f_x = f(*vals)
+    vals[arg] += epsilon
+    f_x_p_eps = f(*vals)
+    return (f_x_p_eps - f_x) / epsilon
 
 
 variable_count = 1
 
 
 class Variable(Protocol):
+    def __init__(self, back):
+        global variable_count
+        super().__init__()
+        self.id = variable_count
+        variable_count += 1
+        self.history = back
+        self.derivative = None
+        
     def accumulate_derivative(self, x: Any) -> None:
         pass
 
@@ -61,8 +75,21 @@ def topological_sort(variable: Variable) -> Iterable[Variable]:
     Returns:
         Non-constant Variables in topological order starting from the right.
     """
-    # TODO: Implement for Task 1.4.
-    raise NotImplementedError("Need to implement for Task 1.4")
+    # Реализуем стандвртный алгоритм:
+
+    res = []
+    visited = set()
+
+    def go_recurse(vertex):
+        if vertex.unique_id in visited:
+            return
+        visited.add(vertex.unique_id)
+        for parent in vertex.parents:
+            go_recurse(parent)
+        res.append(vertex)
+    go_recurse(variable)
+    return res[::-1]
+            
 
 
 def backpropagate(variable: Variable, deriv: Any) -> None:
@@ -76,9 +103,18 @@ def backpropagate(variable: Variable, deriv: Any) -> None:
 
     No return. Should write to its results to the derivative values of each leaf through `accumulate_derivative`.
     """
-    # TODO: Implement for Task 1.4.
-    raise NotImplementedError("Need to implement for Task 1.4")
-
+    topsort = topological_sort(variable)
+    data = dict()
+    data[variable.unique_id] = deriv
+    for cur in topsort:
+        x = data[cur.unique_id]
+        if not cur.is_leaf():
+            for s, part_x in cur.chain_rule(x):
+                if s.unique_id not in data:
+                    data[s.unique_id] = 0
+                data[s.unique_id] += part_x
+        else:
+            cur.accumulate_derivative(x)
 
 @dataclass
 class Context:
